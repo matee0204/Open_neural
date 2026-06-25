@@ -104,6 +104,7 @@ architecture Behavioral of instruction_decoder is
     constant OPERATION_VECTOR_MAC : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(4, OPERATION_CODE_LENGTH));
     constant OPERATION_VECTOR_BIAS_QUANT : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(5, OPERATION_CODE_LENGTH));
     signal opcode : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0);
+    signal opcode_reg : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0);
     signal parameters : std_logic_vector(INSTRUCTION_LENGTH - OPERATION_CODE_LENGTH - 1 downto 0);
     signal pipeline_en : std_logic;
 begin
@@ -182,10 +183,12 @@ begin
         end if;
     end process;
     
+    opcode_out <= opcode_reg;
+    
     process (clk) begin
         if rising_edge(clk) then
             if pipeline_en = '1' then
-                opcode_out <= opcode;
+                opcode_reg <= opcode;
                 memory_read_address <= (others => '0');
                 memory_write_address <= (others => '0');
                 register_read_address <= (others => '0');
@@ -228,7 +231,7 @@ begin
                         resize_module_mode <= (others => '0');
                 end case;
             else
-                opcode_out <= opcode_out;
+                opcode_reg <= opcode_reg;
                 memory_read_address <= memory_read_address;
                 memory_write_address <= memory_write_address;
                 register_read_address <= register_read_address;
@@ -243,9 +246,9 @@ begin
         end if;
     end process;
     
-    process (opcode, opcode_ready, memory_read_address_ready, memory_write_address_ready, register_read_address_ready, register_write_address_ready, systolic_array_selected_weight_bank_ready,
+    process (opcode_reg, opcode_ready, memory_read_address_ready, memory_write_address_ready, register_read_address_ready, register_write_address_ready, systolic_array_selected_weight_bank_ready,
              selected_accumulator_bank_write_ready, selected_accumulator_bank_read_ready, selected_bias_bank_ready, resize_module_mode_ready, rst) begin
-        case opcode is
+        case opcode_reg is
             when OPERATION_VECTOR_LOAD =>
                 instruction_ready <= opcode_ready and memory_read_address_ready and register_write_address_ready and not rst;
             when OPERATION_VECTOR_STORE =>
