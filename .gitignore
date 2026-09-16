@@ -75,3 +75,4 @@ xvlog.*
 .settings/
 *.project
 *.xml
+*.xdc
