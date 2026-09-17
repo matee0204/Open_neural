@@ -21,6 +21,7 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+use work.utilities.all;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
@@ -36,7 +37,6 @@ entity bus_interconnect is
         ADDRESS_WIDTH : natural := 32;
         DATA_WIDTH : natural := 8;
         NUMBER_OF_SLAVES : natural := 3;
-        DEFAULT_SLAVE   : natural  := 0;
         SLAVE_BASE_ADDR : std_logic_vector(NUMBER_OF_SLAVES * ADDRESS_WIDTH - 1 downto 0) := (others => '0');
         SLAVE_ADDR_MASK : std_logic_vector(NUMBER_OF_SLAVES * ADDRESS_WIDTH - 1 downto 0) := (others => '0')
     );
@@ -79,51 +79,10 @@ entity bus_interconnect is
 end bus_interconnect;
 
 architecture Behavioral of bus_interconnect is
-
     signal pipeline_write_en : std_logic;
     signal pipeline_read_en : std_logic;
-
-    function slv_slice (
-        v     : std_logic_vector;
-        index : natural;
-        width : positive
-    ) return std_logic_vector is
-        variable r : std_logic_vector(width - 1 downto 0);
-        variable l : natural range 0 to NUMBER_OF_SLAVES * ADDRESS_WIDTH - 1;
-    begin
-        l := index * width;
-        r := v(l + width - 1 downto l);
-        return r;
-    end function;
-
-    function address_hits_window(
-        addr : std_logic_vector;
-        base : std_logic_vector;
-        mask : std_logic_vector
-    ) return boolean is
-    begin
-        return (addr and not mask) = (base and not mask);
-    end function;
-
-    function target_slave(addr : std_logic_vector(ADDRESS_WIDTH - 1 downto 0)) return natural is
-        variable base : std_logic_vector(ADDRESS_WIDTH - 1 downto 0);
-        variable mask : std_logic_vector(ADDRESS_WIDTH - 1 downto 0);
-    begin
-        for s in 0 to NUMBER_OF_SLAVES - 1 loop
-            base := slv_slice(SLAVE_BASE_ADDR, s, ADDRESS_WIDTH);
-            mask := slv_slice(SLAVE_ADDR_MASK, s, ADDRESS_WIDTH);
-            if address_hits_window(addr, base, mask) then
-                return s;
-            end if;
-        end loop;
-
-        if DEFAULT_SLAVE < NUMBER_OF_SLAVES then
-            return DEFAULT_SLAVE;
-        end if;
-
-        return 0;
-    end function;
-
+    signal read_address_error : std_logic;
+    signal write_address_error : std_logic;
 begin
 
     process (clk, rst)
@@ -138,12 +97,12 @@ begin
             address_writeback_valid <= '0';
         else
             if rising_edge(clk) then
-                read_sel  := target_slave(address_read);
-                write_sel := target_slave(address_write);
+                read_sel  := target_slave(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_read);
+                write_sel := target_slave(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_write);
 
                 s_address_read_valid <= (others => '0');
                 if pipeline_read_en = '1' then
-                    s_address_read_valid(read_sel) <= address_read_valid;
+                    s_address_read_valid(read_sel) <= address_read_valid and not read_address_error;
                     data_read_valid <= '0';
                     for s in 0 to NUMBER_OF_SLAVES - 1 loop
                         if s_data_read_valid(s) = '1' then
@@ -155,9 +114,9 @@ begin
                 s_address_write_valid <= (others => '0');
                 s_data_write_valid <= (others => '0');
                 if pipeline_write_en = '1' then
-                    s_address_write_valid(write_sel) <= address_write_valid and data_write_valid;
-                    s_data_write_valid(write_sel) <= address_write_valid and data_write_valid;
-                    address_writeback_valid <= address_write_valid and data_write_valid;
+                    s_address_write_valid(write_sel) <= address_write_valid and data_write_valid and not write_address_error;
+                    s_data_write_valid(write_sel) <= address_write_valid and data_write_valid and not write_address_error;
+                    address_writeback_valid <= address_write_valid and data_write_valid and not write_address_error;
                 end if;
             end if;
         end if;
@@ -168,8 +127,8 @@ begin
         variable write_sel : natural range 0 to NUMBER_OF_SLAVES - 1;
     begin
         if rising_edge(clk) then
-            read_sel  := target_slave(address_read);
-            write_sel := target_slave(address_write);
+            read_sel  := target_slave(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_read);
+            write_sel := target_slave(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_write);
 
             s_address_read((read_sel + 1) * ADDRESS_WIDTH - 1 downto read_sel * ADDRESS_WIDTH) <= address_read;
 
@@ -190,8 +149,8 @@ begin
         variable read_sel  : natural range 0 to NUMBER_OF_SLAVES - 1;
         variable write_sel : natural range 0 to NUMBER_OF_SLAVES - 1;
     begin
-        read_sel  := target_slave(address_read);
-        write_sel := target_slave(address_write);
+        read_sel  := target_slave(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_read);
+        write_sel := target_slave(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_write);
 
         pipeline_write_en <= s_address_write_ready(write_sel) and s_data_write_ready(write_sel) and address_writeback_ready;
         pipeline_read_en <= s_address_read_ready(read_sel) and data_read_ready;
@@ -206,6 +165,30 @@ begin
                 s_data_read_ready(s) <= '1';
             end if;
         end loop;
+    end process;
+
+    process (address_read)
+        variable valid : boolean;
+    begin
+        valid := is_address_valid(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_read);
+        
+        if valid then
+            read_address_error <= '0';
+        else
+            read_address_error <= '1';
+        end if;
+    end process;
+
+    process (address_write)
+        variable valid : boolean;
+    begin
+        valid := is_address_valid(NUMBER_OF_SLAVES, ADDRESS_WIDTH, SLAVE_BASE_ADDR, SLAVE_ADDR_MASK, address_write);
+        
+        if valid then
+            write_address_error <= '0';
+        else
+            write_address_error <= '1';
+        end if;
     end process;
 
 end Behavioral;

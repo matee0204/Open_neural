@@ -36,6 +36,7 @@ use work.common_constants.all;
 entity vector_resize_module is
     generic (
         INPUT_WIDTH : natural := 32;
+        ADDRESS_WIDTH : natural := 32;
         OUTPUT_WIDTH : natural := 8;
         VECTOR_LENGTH : natural := 8;
         RESIZE_MODE_LENGTH : natural := 3
@@ -45,19 +46,30 @@ entity vector_resize_module is
         
         rst : in std_logic;
         
+        resize_mode_valid : in std_logic;
+        resize_mode_ready : out std_logic;
         resize_mode : in std_logic_vector(RESIZE_MODE_LENGTH - 1 downto 0);
         
         data_in_valid : in std_logic;
         data_in_ready : out std_logic;
         data_in : in data_vector(0 to VECTOR_LENGTH - 1)(INPUT_WIDTH - 1 downto 0);
+
+        write_address_in_valid : in std_logic;
+        write_address_in_ready : out std_logic;
+        write_address_in : in std_logic_vector(ADDRESS_WIDTH - 1 downto 0);
         
         data_out_valid: out std_logic;
         data_out_ready : in std_logic;
-        data_out : out data_vector(0 to VECTOR_LENGTH - 1)(OUTPUT_WIDTH - 1 downto 0)
+        data_out : out data_vector(0 to VECTOR_LENGTH - 1)(OUTPUT_WIDTH - 1 downto 0);
+
+        write_address_out_valid : out std_logic;
+        write_address_out_ready : in std_logic;
+        write_address_out : out std_logic_vector(ADDRESS_WIDTH - 1 downto 0)
     );
 end vector_resize_module;
 
 architecture Behavioral of vector_resize_module is
+    constant VECTOR_RESIZE_DELAY : natural := 2;
     signal saturation_en : std_logic;
 begin
 
@@ -80,6 +92,9 @@ begin
         );
         
     vector_stauration_controller_inst : entity work.vector_resize_controller
+        generic map (
+            VECTOR_RESIZE_DELAY => VECTOR_RESIZE_DELAY
+        )
         port map (
             clk => clk,
             
@@ -89,9 +104,27 @@ begin
             
             data_in_valid => data_in_valid,
             data_in_ready => data_in_ready,
+            resize_mode_valid => resize_mode_valid,
+            resize_mode_ready => resize_mode_ready,
+            write_address_in_valid => write_address_in_valid,
+            write_address_in_ready => write_address_in_ready,
             
             data_out_valid => data_out_valid,
-            data_out_ready => data_out_ready
+            data_out_ready => data_out_ready,
+            write_address_out_valid => write_address_out_valid,
+            write_address_out_ready => write_address_out_ready
+        );
+
+    vector_resize_write_address_controller_inst : entity work.vector_resize_write_address_controller
+        generic map (
+            ADDRESS_WIDTH => ADDRESS_WIDTH,
+            VECTOR_RESIZE_DELAY => VECTOR_RESIZE_DELAY
+        )
+        port map (
+            clk => clk,
+            en => saturation_en,
+            write_address_in => write_address_in,
+            write_address_out => write_address_out
         );
 
 end Behavioral;

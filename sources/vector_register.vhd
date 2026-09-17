@@ -45,8 +45,8 @@ entity vector_register is
         wr_en_A : in std_logic;
         address_A : in std_logic_vector(clog2(DEPTH) - 1 downto 0);
         
-        data_in_A : in data_vector(VECTOR_LENGTH - 1 downto 0)(DATA_WIDTH - 1 downto 0);
-        data_out_A : out data_vector(VECTOR_LENGTH - 1 downto 0)(DATA_WIDTH - 1 downto 0);
+        data_in_A : in data_vector(0 to VECTOR_LENGTH - 1)(DATA_WIDTH - 1 downto 0);
+        data_out_A : out data_vector(0 to VECTOR_LENGTH - 1)(DATA_WIDTH - 1 downto 0);
         
         clk_B : in std_logic;
         en_B : in std_logic;
@@ -54,8 +54,8 @@ entity vector_register is
         wr_en_B : in std_logic;
         address_B : in std_logic_vector(clog2(DEPTH) - 1 downto 0);
         
-        data_in_B : in data_vector(VECTOR_LENGTH - 1 downto 0)(DATA_WIDTH - 1 downto 0);
-        data_out_B : out data_vector(VECTOR_LENGTH - 1 downto 0)(DATA_WIDTH - 1 downto 0)
+        data_in_B : in data_vector(0 to VECTOR_LENGTH - 1)(DATA_WIDTH - 1 downto 0);
+        data_out_B : out data_vector(0 to VECTOR_LENGTH - 1)(DATA_WIDTH - 1 downto 0)
     );
 end vector_register;
 

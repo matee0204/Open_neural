@@ -86,7 +86,7 @@ begin
     end process;
 
     data_in_ready <= data_out_ready;
-    data_out_valid <= or data_valids;
+    data_out_valid <= data_valids(data_valids'high);
     shift_en <= data_out_ready;
 
 end input;
@@ -118,7 +118,12 @@ begin
             data_valids <= (others => '0');
         elsif rising_edge(clk) then
             if shift_en = '1' then
-                data_valids <= data_valids(data_valids'high - 1 downto data_valids'low) & data_in_valid;
+                if and data_valids then
+                    data_valids <= (others => '0');
+                    data_valids(0) <= data_in_valid;
+                else
+                    data_valids <= data_valids(data_valids'high - 1 downto data_valids'low) & data_in_valid;
+                end if;
             else
                 data_valids <= data_valids;
             end if;

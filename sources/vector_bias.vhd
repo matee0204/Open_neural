@@ -61,7 +61,16 @@ architecture Behavioral of vector_bias is
     signal bias_reg_out_B : data_vector(0 to VECTOR_LENGTH - 1)(BIAS_DATA_WIDTH - 1 downto 0);
     signal bias_reg_data_out_signed : data_vector_signed(0 to VECTOR_LENGTH - 1)(BIAS_DATA_WIDTH - 1 downto 0);
     signal data_out_from_adder : data_vector_signed(0 to VECTOR_LENGTH - 1)(OUTPUT_DATA_WIDTH - 1 downto 0);
+    signal data_in_delay : data_vector_signed(0 to VECTOR_LENGTH - 1)(INPUT_DATA_WIDTH - 1 downto 0);
 begin
+
+    process (clk) begin
+        if rising_edge(clk) then
+            if en = '1' then
+                data_in_delay <= data_in;
+            end if;
+        end if;
+    end process;
 
     bias_register_inst : entity work.vector_register(Read_first)
         generic map(
@@ -71,13 +80,13 @@ begin
         )
         port map(
             clk_A      => clk,
-            en_A       => en,
+            en_A       => '1',
             wr_en_A    => bias_reg_write_en,
             address_A  => bias_reg_read_write_address,
             data_in_A  => bias_reg_data_in,
             data_out_A => bias_reg_data_out,
             clk_B      => clk,
-            en_B       => en,
+            en_B       => '1',
             wr_en_B    => '0',
             address_B  => bias_reg_address,
             data_in_B  => (others => (others => '0')),
@@ -99,7 +108,7 @@ begin
         )
         port map(
             data_in_A  => bias_reg_data_out_signed,
-            data_in_B  => data_in,
+            data_in_B  => data_in_delay,
             result_out => data_out_from_adder
         );
     

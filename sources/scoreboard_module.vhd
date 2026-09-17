@@ -60,8 +60,7 @@ entity scoreboard_module is
         
         dst_address_valid : in std_logic;
         dst_address_ready : out std_logic;
-        dst_address : in std_logic_vector(ADDRESS_LENGTH - 1 downto 0);
-        dst_write_ready : in std_logic
+        dst_address : in std_logic_vector(ADDRESS_LENGTH - 1 downto 0)
     );
 end scoreboard_module;
 
@@ -78,7 +77,7 @@ begin
             scoreboard <= (others => '0');
         else
             if rising_edge(clk) then
-                if dst_address_valid = '1' and dst_write_ready = '1' then
+                if dst_address_valid = '1' then
                     scoreboard(to_integer(unsigned(dst_address))) <= '0';
                 end if;
                 if write_address_valid = '1' and scoreboard_write_out = '0' and pipeline_ready = '1' then

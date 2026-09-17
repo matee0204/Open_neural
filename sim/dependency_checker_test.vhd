@@ -248,7 +248,7 @@ begin
 
     tb_dependency_handler : entity work.dependency_handler
         generic map (
-            NUM_OF_VECTOR_REGISTERS => NUM_OF_VECTOR_REGISTERS,
+            NUM_OF_REGISTERS => NUM_OF_VECTOR_REGISTERS,
             NUM_OF_ACCUMULATOR_REGISTERS => NUM_OF_ACCUMULATOR_REGISTERS,
             NUM_OF_BIAS_REGISTERS => NUM_OF_BIAS_REGISTERS,
             

@@ -60,7 +60,7 @@ architecture Behavioral of data_delay is
 begin
 
     pipeline_en <= data_out_ready;
-    data_in_ready <= pipeline_en;
+    data_in_ready <= pipeline_en and input_en;
     data_out_valid <= data_valid_delay(DELAY_LENGTH - 1);
 
     process (clk, rst) begin
@@ -69,7 +69,10 @@ begin
         else
             if rising_edge(clk) then
                 if pipeline_en = '1' then
-                    data_valid_delay <= data_valid_delay(DELAY_LENGTH - 2 downto 0) & (data_in_valid and input_en);
+                    data_valid_delay(0) <= data_in_valid and input_en;
+                    for i in 1 to DELAY_LENGTH - 1 loop
+                        data_valid_delay(i) <= data_valid_delay(i - 1);
+                    end loop;
                 else
                     data_valid_delay <= data_valid_delay;
                 end if;

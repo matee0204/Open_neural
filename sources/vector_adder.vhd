@@ -40,17 +40,17 @@ entity vector_adder is
         VECTOR_LENGTH : natural := 8
     );
     port (        
-        data_in_A : in data_vector_signed(VECTOR_LENGTH - 1 downto 0)(INPUT_A_DATA_WIDTH - 1 downto 0);
+        data_in_A : in data_vector_signed(0 to VECTOR_LENGTH - 1)(INPUT_A_DATA_WIDTH - 1 downto 0);
         
-        data_in_B : in data_vector_signed(VECTOR_LENGTH - 1 downto 0)(INPUT_B_DATA_WIDTH - 1 downto 0);
+        data_in_B : in data_vector_signed(0 to VECTOR_LENGTH - 1)(INPUT_B_DATA_WIDTH - 1 downto 0);
         
-        result_out : out data_vector_signed(VECTOR_LENGTH - 1 downto 0)(OUTPUT_DATA_WIDTH - 1 downto 0)
+        result_out : out data_vector_signed(0 to VECTOR_LENGTH - 1)(OUTPUT_DATA_WIDTH - 1 downto 0)
     );
 end vector_adder;
 
 architecture Behavioral of vector_adder is
-    signal data_in_A_extended_signed : data_vector_signed(VECTOR_LENGTH - 1 downto 0)(OUTPUT_DATA_WIDTH - 1 downto 0);
-    signal data_in_B_extended_signed : data_vector_signed(VECTOR_LENGTH - 1 downto 0)(OUTPUT_DATA_WIDTH - 1 downto 0);
+    signal data_in_A_extended_signed : data_vector_signed(0 to VECTOR_LENGTH - 1)(OUTPUT_DATA_WIDTH - 1 downto 0);
+    signal data_in_B_extended_signed : data_vector_signed(0 to VECTOR_LENGTH - 1)(OUTPUT_DATA_WIDTH - 1 downto 0);
 begin
    
     process (data_in_A, data_in_B) begin

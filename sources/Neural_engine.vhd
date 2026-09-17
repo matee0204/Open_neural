@@ -28,6 +28,7 @@ package Neural_engine is
     type data_vector is array (natural range <>) of std_logic_vector;
     type data_vector_signed is array (natural range <>) of signed;
     type data_vector_unsigned is array (natural range <>) of unsigned;
+    type data_matrix is array (natural range <>) of data_vector;
     function clog2(n : natural) return natural;
     function flatten(v : data_vector) return std_logic_vector;
     function vectorize(s : std_logic_vector; data_width : natural; vector_length : natural) return data_vector;

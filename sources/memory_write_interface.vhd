@@ -1,21 +1,21 @@
 ----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
+-- Company:
+-- Engineer:
+--
 -- Create Date: 03/31/2026 08:45:04 PM
--- Design Name: 
+-- Design Name:
 -- Module Name: pipeline_mov - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
+-- Project Name:
+-- Target Devices:
+-- Tool Versions:
+-- Description:
+--
+-- Dependencies:
+--
 -- Revision:
 -- Revision 0.01 - File Created
 -- Additional Comments:
--- 
+--
 ----------------------------------------------------------------------------------
 
 
@@ -32,7 +32,7 @@ use work.neural_engine.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity pipeline_mov is
+entity memory_write_interface is
     generic (
         WRITE_ADDRESS_LENGTH : natural := 16;
         VECTOR_LENGTH : natural := 8;
@@ -41,30 +41,26 @@ entity pipeline_mov is
     port (
         clk : in std_logic;
         rst : in std_logic;
-        
-        en : in std_logic;
-        
-        pipeline_en_out : out std_logic;
-        
+
         write_address_in_valid : in std_logic;
         write_address_in_ready : out std_logic;
         write_address_in : in std_logic_vector(WRITE_ADDRESS_LENGTH - 1 downto 0);
-        
+
         read_data_in_valid : in std_logic;
         read_data_in_ready : out std_logic;
         read_data_in : in data_vector(0 to VECTOR_LENGTH - 1)(DATA_WIDTH - 1 downto 0);
-        
+
         write_address_out_valid : out std_logic;
         write_address_out_ready : in std_logic;
         write_address_out : out std_logic_vector(WRITE_ADDRESS_LENGTH - 1 downto 0);
-        
+
         write_data_out_valid : out std_logic;
         write_data_out_ready : in std_logic;
         write_data_out : out data_vector(0 to VECTOR_LENGTH - 1)(DATA_WIDTH - 1 downto 0)
     );
-end pipeline_mov;
+end memory_write_interface;
 
-architecture Behavioral of pipeline_mov is
+architecture Behavioral of memory_write_interface is
     signal pipeline_en : std_logic;
     signal wait_for_data : std_logic;
     signal reg_address_d : std_logic_vector(WRITE_ADDRESS_LENGTH - 1 downto 0);
@@ -77,30 +73,25 @@ begin
     wait_for_data <= write_address_in_valid and not read_data_in_valid;
     write_address_in_ready <= pipeline_en and not wait_for_data;
     read_data_in_ready <= pipeline_en;
-    pipeline_en_out <= pipeline_en;
 
     write_address_out_valid <= reg_address_valid_d;
     write_data_out_valid <= reg_data_valid_d;
-    
+
     process (clk, rst) begin
         if rst = '1' then
             reg_address_valid_d <= '0';
             reg_data_valid_d <= '0';
         elsif rising_edge(clk) then
             if pipeline_en = '1' then
-                if wait_for_data = '0' then
-                    reg_address_valid_d <= write_address_in_valid and en;
-                else
-                    reg_address_valid_d <= reg_address_valid_d;
-                end if;
-                reg_data_valid_d <= read_data_in_valid and en;
+                reg_address_valid_d <= write_address_in_valid and not wait_for_data;
+                reg_data_valid_d <= read_data_in_valid;
             else
                 reg_address_valid_d <= reg_address_valid_d;
                 reg_data_valid_d <= reg_data_valid_d;
             end if;
         end if;
     end process;
-    
+
     write_address_out <= reg_address_d;
     write_data_out <= reg_data_d;
 

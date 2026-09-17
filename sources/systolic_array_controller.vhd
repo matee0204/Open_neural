@@ -35,7 +35,8 @@ use work.Neural_engine.all;
 entity systolic_array_controller is
     generic (
         SYS_ARRAY_SIZE : natural := 8;
-        WEIGHT_REGISTER_DEPTH : natural := 2
+        WEIGHT_REGISTER_DEPTH : natural := 2;
+        DATA_IN_DELAY : natural := 2
     );
     port (
         clk : in std_logic;
@@ -77,19 +78,23 @@ entity systolic_array_controller is
 end systolic_array_controller;
 
 architecture Behavioral of systolic_array_controller is
-    signal data_valid_d : std_logic_vector(SYS_ARRAY_SIZE - 1 downto 0);
+    signal data_valid_d : std_logic_vector(SYS_ARRAY_SIZE + DATA_IN_DELAY - 1 downto 0);
     signal weight_read_address_valid_d : std_logic;
     signal weight_read_write_address_valid_mux : std_logic;
     signal weight_read_write_address_mux : std_logic_vector(clog2(WEIGHT_REGISTER_DEPTH * SYS_ARRAY_SIZE) - 1 downto 0);
     signal operation_in_progress : std_logic;
     signal current_selected_weight_bank : std_logic_vector(clog2(WEIGHT_REGISTER_DEPTH) - 1 downto 0);
     signal are_selected_banks_the_same : std_logic;
+    signal is_there_control_without_data : std_logic;
 begin
 
     pipeline_en <= result_out_ready and weight_col_address_ready_in and weight_out_ready;
     data_in_ready <= result_out_ready and not rst;
     weight_in_ready <= weight_col_address_ready_in and not rst;
-    selected_weight_bank_ready <= not (operation_in_progress and not are_selected_banks_the_same and selected_weight_bank_valid) and not rst;
+    is_there_control_without_data <= selected_weight_bank_valid and not data_in_valid;
+    selected_weight_bank_ready <= not (operation_in_progress and not are_selected_banks_the_same and selected_weight_bank_valid) and
+                                  not is_there_control_without_data and
+                                  not rst;
     
     result_out_valid <= data_valid_d(data_valid_d'high);
     weight_out_valid <= weight_read_address_valid_d;

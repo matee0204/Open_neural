@@ -37,7 +37,8 @@ entity systolic_array_block is
         SYS_ARRAY_SIZE : natural := 8;
         INPUT_DATA_WIDTH : natural := 8;
         OUTPUT_DATA_WIDTH : natural := 32;
-        WEIGHT_REGISTER_DEPTH : natural := 2
+        WEIGHT_REGISTER_DEPTH : natural := 2;
+        DATA_IN_DELAY : natural := 2
     );
     port (
         clk : in std_logic;
@@ -58,8 +59,23 @@ end systolic_array_block;
 
 architecture Behavioral of systolic_array_block is
     type row_connection_t is array(1 to SYS_ARRAY_SIZE - 1) of data_vector(0 to SYS_ARRAY_SIZE - 1)(OUTPUT_DATA_WIDTH - 1 downto 0);
+    type data_delay_t is array(0 to DATA_IN_DELAY - 1) of data_vector(0 to SYS_ARRAY_SIZE - 1)(INPUT_DATA_WIDTH - 1 downto 0);
     signal row_connections_data : row_connection_t;
+    signal data_input_delay : data_delay_t;
 begin
+
+    process (clk) begin
+        if rising_edge(clk) then
+            if en = '1' then
+                data_input_delay(0) <= data_in;
+                for i in 1 to DATA_IN_DELAY - 1 loop
+                    data_input_delay(i) <= data_input_delay(i - 1);
+                end loop;
+            else
+                data_input_delay <= data_input_delay;
+            end if;
+        end if;
+    end process;
     
     first_sys_array_row_inst : entity work.systolic_array_row
         generic map (
@@ -79,7 +95,7 @@ begin
             
             selected_weight_bank => selected_weight_bank,
             
-            data_in => data_in(0),
+            data_in => data_input_delay(DATA_IN_DELAY - 1)(0),
             
             partial_result_in => (others => (others => '0')),
             
@@ -105,7 +121,7 @@ begin
                 
                 selected_weight_bank => selected_weight_bank,
                 
-                data_in => data_in(i),
+                data_in => data_input_delay(DATA_IN_DELAY - 1)(i),
                 
                 partial_result_in => row_connections_data(i),
                 
@@ -131,7 +147,7 @@ begin
             
             selected_weight_bank => selected_weight_bank,
             
-            data_in => data_in(SYS_ARRAY_SIZE - 1),
+            data_in => data_input_delay(DATA_IN_DELAY - 1)(SYS_ARRAY_SIZE - 1),
             
             partial_result_in => row_connections_data(SYS_ARRAY_SIZE - 1),
             

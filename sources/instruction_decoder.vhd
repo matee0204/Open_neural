@@ -43,7 +43,9 @@ entity instruction_decoder is
         BIAS_ADDRESS_LENGTH : natural := 8;
         ACCUMULATOR_ADDRESS_LENGTH : natural := 8;
         ACCUMULATOR_MODE_LENGTH : natural := 3;
-        RESIZE_MODE_LENGTH : natural := 3
+        RESIZE_MODE_LENGTH : natural := 3;
+        SYS_ARRAY_INPUT_BASE_ADDRESS : std_logic_vector(REGISTER_ADDRESS_LENGTH - 1 downto 0);
+        MEM_INTERFACE_INPUT_BASE_ADDRESS : std_logic_vector(REGISTER_ADDRESS_LENGTH - 1 downto 0)
     );
     port (
         clk : in std_logic;
@@ -79,6 +81,9 @@ entity instruction_decoder is
         selected_accumulator_bank_write_valid : out std_logic;
         selected_accumulator_bank_write_ready : in std_logic;
         selected_accumulator_bank_write : out std_logic_vector(ACCUMULATOR_ADDRESS_LENGTH - 1 downto 0);
+
+        accumulator_mode_valid : out std_logic;
+        accumulator_mode_ready : in std_logic;
         accumulator_mode : out std_logic_vector(ACCUMULATOR_MODE_LENGTH - 1 downto 0);
         
         selected_accumulator_bank_read_valid : out std_logic;
@@ -97,19 +102,16 @@ end instruction_decoder;
 
 architecture Behavioral of instruction_decoder is
     constant PARAMETER_LENGTH : natural := INSTRUCTION_LENGTH - OPERATION_CODE_LENGTH;
-    constant OPERATION_NOP : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(0, OPERATION_CODE_LENGTH)); -- @suppress "Unused declaration"
-    constant OPERATION_VECTOR_LOAD : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(1, OPERATION_CODE_LENGTH));
-    constant OPERATION_VECTOR_STORE : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(2, OPERATION_CODE_LENGTH));
-    constant OPERATION_VECTOR_MOV : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(3, OPERATION_CODE_LENGTH));
-    constant OPERATION_VECTOR_MAC : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(4, OPERATION_CODE_LENGTH));
-    constant OPERATION_VECTOR_BIAS_QUANT : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0) := std_logic_vector(to_unsigned(5, OPERATION_CODE_LENGTH));
     signal opcode : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0);
+    signal opcode_natural : natural range 0 to NUMBER_OF_OPERATIONS - 1;
     signal opcode_reg : std_logic_vector(OPERATION_CODE_LENGTH - 1 downto 0);
+    signal opcode_reg_natural : natural range 0 to NUMBER_OF_OPERATIONS - 1;
     signal parameters : std_logic_vector(INSTRUCTION_LENGTH - OPERATION_CODE_LENGTH - 1 downto 0);
     signal pipeline_en : std_logic;
 begin
 
     opcode <= instruction(INSTRUCTION_LENGTH - 1 downto INSTRUCTION_LENGTH - OPERATION_CODE_LENGTH);
+    opcode_natural <= to_integer(unsigned(instruction(INSTRUCTION_LENGTH - 1 downto INSTRUCTION_LENGTH - OPERATION_CODE_LENGTH)));
     parameters <= instruction(INSTRUCTION_LENGTH - OPERATION_CODE_LENGTH - 1 downto 0);
     pipeline_en <= instruction_ready;
 
@@ -122,6 +124,7 @@ begin
             register_write_address_valid <= '0';
             systolic_array_selected_weight_bank_valid <= '0';
             selected_accumulator_bank_write_valid <= '0';
+            accumulator_mode_valid <= '0';
             selected_accumulator_bank_read_valid <= '0';
             selected_bias_bank_valid <= '0';
             resize_module_mode_valid <= '0';
@@ -135,23 +138,27 @@ begin
                     register_write_address_valid <= '0';
                     systolic_array_selected_weight_bank_valid <= '0';
                     selected_accumulator_bank_write_valid <= '0';
+                    accumulator_mode_valid <= '0';
                     selected_accumulator_bank_read_valid <= '0';
                     selected_bias_bank_valid <= '0';
                     resize_module_mode_valid <= '0';
-                    case opcode is
+                    case opcode_natural is
                         when OPERATION_VECTOR_LOAD =>
                             memory_read_address_valid <= instruction_valid;
                             register_write_address_valid <= instruction_valid;
                         when OPERATION_VECTOR_STORE =>
                             memory_write_address_valid <= instruction_valid;
                             register_read_address_valid <= instruction_valid;
+                            register_write_address_valid <= instruction_valid;
                         when OPERATION_VECTOR_MOV =>
                             register_write_address_valid <= instruction_valid;
                             register_read_address_valid <= instruction_valid;
                         when OPERATION_VECTOR_MAC =>
                             register_read_address_valid <= instruction_valid;
+                            register_write_address_valid <= instruction_valid;
                             systolic_array_selected_weight_bank_valid <= instruction_valid;
                             selected_accumulator_bank_write_valid <= instruction_valid;
+                            accumulator_mode_valid <= instruction_valid;
                         when OPERATION_VECTOR_BIAS_QUANT =>
                             register_write_address_valid <= instruction_valid;
                             selected_accumulator_bank_read_valid <= instruction_valid;
@@ -164,6 +171,7 @@ begin
                             register_write_address_valid <= '0';
                             systolic_array_selected_weight_bank_valid <= '0';
                             selected_accumulator_bank_write_valid <= '0';
+                            accumulator_mode_valid <= '0';
                             selected_bias_bank_valid <= '0';
                             resize_module_mode_valid <= '0';
                     end case;
@@ -175,6 +183,7 @@ begin
                     register_write_address_valid <= register_write_address_valid;
                     systolic_array_selected_weight_bank_valid <= systolic_array_selected_weight_bank_valid;
                     selected_accumulator_bank_write_valid <= selected_accumulator_bank_write_valid;
+                    accumulator_mode_valid <= accumulator_mode_valid;
                     selected_accumulator_bank_read_valid <= selected_accumulator_bank_read_valid;
                     selected_bias_bank_valid <= selected_bias_bank_valid;
                     resize_module_mode_valid <= resize_module_mode_valid;
@@ -199,21 +208,23 @@ begin
                 accumulator_mode <= (others => '0');
                 selected_bias_bank <= (others => '0');
                 resize_module_mode <= (others => '0');
-                case opcode is
+                case opcode_natural is
                     when OPERATION_VECTOR_LOAD =>
                         memory_read_address <= parameters(PARAMETER_LENGTH - 1 downto PARAMETER_LENGTH - MEMORY_ADDRESS_LENGTH);
                         register_write_address <= parameters(PARAMETER_LENGTH - MEMORY_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - MEMORY_ADDRESS_LENGTH - REGISTER_ADDRESS_LENGTH);
                     when OPERATION_VECTOR_STORE =>
                         memory_write_address <= parameters(PARAMETER_LENGTH - 1 downto PARAMETER_LENGTH - MEMORY_ADDRESS_LENGTH);
                         register_read_address <= parameters(PARAMETER_LENGTH - MEMORY_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - MEMORY_ADDRESS_LENGTH - REGISTER_ADDRESS_LENGTH);
+                        register_write_address <= MEM_INTERFACE_INPUT_BASE_ADDRESS;
                     when OPERATION_VECTOR_MOV =>
                         register_read_address <= parameters(PARAMETER_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH);
                         register_write_address <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - REGISTER_ADDRESS_LENGTH);
                     when OPERATION_VECTOR_MAC =>
                         register_read_address <= parameters(PARAMETER_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH);
-                        systolic_array_selected_weight_bank <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH);
-                        selected_accumulator_bank_write <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH);
-                        accumulator_mode <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH - ACCUMULATOR_MODE_LENGTH);
+                        register_write_address <= SYS_ARRAY_INPUT_BASE_ADDRESS;
+                        selected_accumulator_bank_write <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH);
+                        systolic_array_selected_weight_bank <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH);
+                        accumulator_mode <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH - SYSTOLIC_ARRAY_WEIGHT_ADDRESS_LENGTH - ACCUMULATOR_MODE_LENGTH);
                     when OPERATION_VECTOR_BIAS_QUANT =>
                         register_write_address <= parameters(PARAMETER_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH);
                         selected_accumulator_bank_read <= parameters(PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - 1 downto PARAMETER_LENGTH - REGISTER_ADDRESS_LENGTH - ACCUMULATOR_ADDRESS_LENGTH);
@@ -246,17 +257,19 @@ begin
         end if;
     end process;
     
-    process (opcode_reg, opcode_ready, memory_read_address_ready, memory_write_address_ready, register_read_address_ready, register_write_address_ready, systolic_array_selected_weight_bank_ready,
-             selected_accumulator_bank_write_ready, selected_accumulator_bank_read_ready, selected_bias_bank_ready, resize_module_mode_ready, rst) begin
-        case opcode_reg is
+    opcode_reg_natural <= to_integer(unsigned(opcode_reg));
+
+    process (opcode_reg_natural, opcode_ready, memory_read_address_ready, memory_write_address_ready, register_read_address_ready, register_write_address_ready, systolic_array_selected_weight_bank_ready,
+             selected_accumulator_bank_write_ready, accumulator_mode_ready, selected_accumulator_bank_read_ready, selected_bias_bank_ready, resize_module_mode_ready, rst) begin
+        case opcode_reg_natural is
             when OPERATION_VECTOR_LOAD =>
                 instruction_ready <= opcode_ready and memory_read_address_ready and register_write_address_ready and not rst;
             when OPERATION_VECTOR_STORE =>
-                instruction_ready <= opcode_ready and memory_write_address_ready and register_read_address_ready and not rst;
+                instruction_ready <= opcode_ready and memory_write_address_ready and register_read_address_ready and register_write_address_ready and not rst;
             when OPERATION_VECTOR_MOV =>
                 instruction_ready <= opcode_ready and register_write_address_ready and register_read_address_ready and not rst;
             when OPERATION_VECTOR_MAC =>
-                instruction_ready <= opcode_ready and register_read_address_ready and systolic_array_selected_weight_bank_ready and selected_accumulator_bank_write_ready and not rst;
+                instruction_ready <= opcode_ready and register_read_address_ready and register_write_address_ready and systolic_array_selected_weight_bank_ready and selected_accumulator_bank_write_ready and accumulator_mode_ready and not rst;
             when OPERATION_VECTOR_BIAS_QUANT =>
                 instruction_ready <= opcode_ready and register_write_address_ready and selected_accumulator_bank_read_ready and selected_bias_bank_ready and resize_module_mode_ready and not rst;
             when others =>
