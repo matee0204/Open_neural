@@ -24,7 +24,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -32,6 +32,13 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 package utilities is
+    type data_vector is array (natural range <>) of std_logic_vector;
+    type data_vector_signed is array (natural range <>) of signed;
+    type data_vector_unsigned is array (natural range <>) of unsigned;
+    type data_matrix is array (natural range <>) of data_vector;
+    function clog2(n : natural) return natural;
+    function flatten(v : data_vector) return std_logic_vector;
+    function vectorize(s : std_logic_vector; data_width : natural; vector_length : natural) return data_vector;
     function slv_slice (num_of_elements : natural; orig_element_width : natural; v : std_logic_vector; index : natural; result_width : positive) return std_logic_vector;
     function address_hits_window (addr : std_logic_vector; base : std_logic_vector; mask : std_logic_vector) return boolean;
     function target_slave(num_of_slaves : natural; address_width : natural; slave_base_addr : std_logic_vector; slave_addr_mask : std_logic_vector; addr : std_logic_vector) return natural;
@@ -104,6 +111,36 @@ package body utilities is
         end loop;
 
         return FALSE;
+    end function;
+    
+    function clog2(n : natural) return natural is
+        variable r : natural := 0;
+        variable v : natural := n - 1;
+    begin
+        while v > 0 loop
+            v := v / 2;
+            r := r + 1;
+        end loop;
+        return r;
+    end function;
+
+    function flatten(v : data_vector) return std_logic_vector is
+        constant size : natural := v'length * v(0)'length;
+        variable temp : std_logic_vector(size - 1 downto 0);
+    begin
+        for i in 0 to v'length - 1 loop
+            temp(v(0)'length * i + v(0)'length - 1 downto v(0)'length * i) := v(i);
+        end loop;
+        return temp;
+    end function;
+
+    function vectorize(s : std_logic_vector; data_width : natural; vector_length : natural) return data_vector is
+        variable temp : data_vector(0 to vector_length - 1)(data_width - 1 downto 0);
+    begin
+        for i in 0 to vector_length - 1 loop
+            temp(i) := s(data_width * i + data_width - 1 downto data_width * i);
+        end loop;
+        return temp;
     end function;
 
 end utilities;

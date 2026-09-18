@@ -21,7 +21,7 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use work.Neural_engine.all;
+use work.utilities.all;
 use IEEE.NUMERIC_STD.ALL;
 
 entity Sys_array_vector_input_test is

@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 06/08/2026 05:47:50 PM
+-- Create Date: 09/17/2026 10:38:29 PM
 -- Design Name: 
--- Module Name: neural_engine_wrapper - Behavioral
+-- Module Name: neural_engine_vhdl_wrapper - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -21,7 +21,7 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use work.Neural_engine.all;
+use work.utilities.all;
 use work.common_constants.all;
 
 -- Uncomment the following library declaration if using
@@ -33,7 +33,7 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity neural_engine_wrapper is
+entity neural_engine_vhdl_wrapper is
     generic (
         INSTRUCTION_LENGTH                   : natural := 64;
         OPERATION_CODE_WIDTH                 : natural := 7;
@@ -80,9 +80,9 @@ entity neural_engine_wrapper is
         memory_read_data_in_ready : out std_logic;
         memory_read_data_in : in std_logic_vector(DATA_WIDTH * SYSTOLIC_ARRAY_SIZE - 1 downto 0)
     );
-end neural_engine_wrapper;
+end neural_engine_vhdl_wrapper;
 
-architecture Behavioral of neural_engine_wrapper is
+architecture Behavioral of neural_engine_vhdl_wrapper is
     
     attribute X_INTERFACE_PARAMETER : string;
     attribute X_INTERFACE_PARAMETER of rst : signal is "POLARITY ACTIVE_HIGH";
