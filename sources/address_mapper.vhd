@@ -58,7 +58,7 @@ architecture Behavioral of address_mapper is
     signal address_valid_d : std_logic;
     signal mapped_address : std_logic_vector(ADDRESS_WIDTH - 1 downto 0);
     signal pipeline_en : std_logic;
-    signal reg_block_index_error : std_logic;
+    signal address_valid : std_logic;
 begin
 
     pipeline_en <= address_out_ready;
@@ -72,7 +72,7 @@ begin
         else
             if rising_edge(clk) then
                 if pipeline_en = '1' then
-                    address_valid_d <= address_in_valid and not reg_block_index_error;
+                    address_valid_d <= address_in_valid and address_valid;
                 end if;
             end if;
         end if;
@@ -104,9 +104,9 @@ begin
         valid := is_address_valid(NUMBER_OF_REGISTER_BLOCKS, ADDRESS_WIDTH, ORIG_BASE_ADDR, ORIG_ADDR_MASK, address_in);
         
         if valid then
-            reg_block_index_error <= '0';
+            address_valid <= '1';
         else
-            reg_block_index_error <= '1';
+            address_valid <= '0';
         end if;
     end process;
 
