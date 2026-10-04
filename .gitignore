@@ -75,3 +75,5 @@ xvlog.*
 .settings/
 *.project
 *.xml
+
+*.sigasi
